@@ -1,30 +1,14 @@
 # ============================================================================
-# REUSABLE TEST WORKFLOW
+# TEST WORKFLOW
 # ============================================================================
-# Este é um workflow REUTILIZÁVEL.
-# 
-# O que significa "reutilizável"?
-# - Ele não é executado diretamente por eventos (push, PR, etc.)
-# - Em vez disso, ele é CHAMADO por outros workflows usando "uses:"
-# - Isso permite que a lógica de testes seja compartilhada entre vários pipelines
-# 
-# Por que separar a lógica de testes?
-# - Mantém o ci.yml simples e focado em "quando executar"
-# - Este arquivo foca no "como executar" (os passos dos testes)
-# - Se precisar mudar os testes, muda apenas aqui
-# ============================================================================
+
 
 name: Test Workflow
 
 # ============================================================================
 # BLOCO on: Define como este workflow pode ser chamado
 # ============================================================================
-# workflow_call: Significa que este workflow pode ser chamado por outro workflow
-# 
-# inputs: São parâmetros que quem chama pode passar
-#   - python-version: A lista de versões do Python para testar
-#   - O valor padrão é '["3.10", "3.11"]' se quem chama não passar nada
-# ============================================================================
+
 
 on:
   workflow_call:
@@ -36,12 +20,6 @@ on:
 
 # ============================================================================
 # BLOCO permissions: Permissões mínimas necessárias
-# ============================================================================
-# contents: read -> Pode ler o código (necessário para o checkout)
-# checks: write  -> Pode criar/atualizar os status checks no PR
-# 
-# checks: write é importante porque permite que o GitHub mostre no PR
-# se os testes passaram ou falharam (verde ou vermelho)
 # ============================================================================
 
 permissions:
@@ -57,19 +35,7 @@ jobs:
   # ==========================================================================
   # JOB: test
   # ==========================================================================
-  # Função: Executa testes em múltiplas versões do Python
-  # 
-  # O que acontece neste job:
-  # 1. Cria uma "matrix" (tabela) com as versões do Python
-  # 2. Para cada versão, executa os mesmos steps (checkout, setup, testes)
-  # 3. Os jobs rodam em PARALELO (ao mesmo tempo)
-  # 4. Se qualquer versão falhar, todo o pipeline é considerado falho
-  # 
-  # Por que testar em múltiplas versões?
-  # - Garante que o código funciona em diferentes ambientes
-  # - Evita surpresas quando a versão do Python for atualizada
-  # - É um requisito da atividade (matrix com pelo menos 2 versões)
-  # ==========================================================================
+  
 
   test:
     name: Test (Python ${{ matrix.python-version }})
@@ -78,13 +44,7 @@ jobs:
     # ========================================================================
     # BLOCO strategy: Define a estratégia de execução (matrix)
     # ========================================================================
-    # matrix: Cria múltiplas execuções, uma para cada item da lista
-    # python-version: A lista de versões vem do input do workflow
-    # fromJson: Converte a string JSON ('["3.10", "3.11"]') em uma lista real
-    # fail-fast: false -> Se um job falhar, os outros continuam rodando
-    #   - Isso é útil para ver se outras versões também falham
-    #   - Se fosse true, ao primeiro erro todos os jobs seriam cancelados
-    # ========================================================================
+    
 
     strategy:
       matrix:
@@ -94,27 +54,14 @@ jobs:
     # ========================================================================
     # BLOCO steps: Lista de passos executados em sequência
     # ========================================================================
-    # Cada step é uma ação ou comando executado no runner (máquina virtual)
-    # Os steps rodam em ORDEM, do primeiro ao último
-    # Se um step falha, os seguintes não são executados (exceto com if: always())
-    # ========================================================================
+   
 
     steps:
 
       # ----------------------------------------------------------------------
       # STEP 1: Checkout code
       # ----------------------------------------------------------------------
-      # Função: Baixa o código do repositório para a máquina do runner
-      # 
-      # O que é "checkout"?
-      # - É o ato de clonar o repositório na máquina virtual
-      # - Sem isso, o runner não tem acesso ao código para testar
-      # 
-      # actions/checkout@v4:
-      # - É uma action oficial do GitHub
-      # - @v4 significa "versão 4" (versão estável e testada)
-      # - O runner baixa a action e a executa
-      # ----------------------------------------------------------------------
+    
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -122,21 +69,7 @@ jobs:
       # ----------------------------------------------------------------------
       # STEP 2: Setup Python
       # ----------------------------------------------------------------------
-      # Função: Instala a versão específica do Python no runner
-      # 
-      # Por que isso é necessário?
-      # - O runner (ubuntu-latest) não tem Python instalado por padrão
-      # - Precisamos instalar a versão correta para rodar os testes
-      # 
-      # actions/setup-python@v5:
-      # - Action oficial que instala o Python
-      # - Cache: pip -> Ativa o cache automático das dependências
-      #   - Na primeira execução, baixa tudo
-      #   - Na segunda execução, usa o cache (muito mais rápido)
-      #   - cache-dependency-path: Arquivo usado para criar a chave do cache
-      #     - Se o requirements.txt mudar, a chave muda e o cache é recriado
-      # ----------------------------------------------------------------------
-
+    
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -147,22 +80,7 @@ jobs:
       # ----------------------------------------------------------------------
       # STEP 3: Install dependencies
       # ----------------------------------------------------------------------
-      # Função: Instala todas as dependências necessárias para rodar os testes
-      # 
-      # O que são dependências?
-      # - São pacotes/bibliotecas que o código precisa para funcionar
-      # - Ex: Flask (framework web), pytest (framework de testes)
-      # 
-      # O comando pip install:
-      # - Lê os arquivos requirements.txt e requirements-dev.txt
-      # - Baixa e instala todos os pacotes listados
-      # - requirements.txt: Dependências de produção (ex: Flask)
-      # - requirements-dev.txt: Dependências de desenvolvimento (ex: pytest)
-      # 
-      # Por que separar em dois arquivos?
-      # - Em produção, só precisamos do essencial
-      # - Em desenvolvimento, precisamos de ferramentas extras (testes, segurança)
-      # ----------------------------------------------------------------------
+      
 
       - name: Install dependencies
         run: |
@@ -172,45 +90,14 @@ jobs:
       # ----------------------------------------------------------------------
       # STEP 4: Run pip-audit (security gate)
       # ----------------------------------------------------------------------
-      # Função: Verifica se as dependências têm vulnerabilidades conhecidas
-      # 
-      # O que é pip-audit?
-      # - Uma ferramenta que consulta o banco de dados de vulnerabilidades
-      # - PyPI Advisory DB e OSV (banco de dados aberto de vulnerabilidades)
-      # 
-      # O que acontece se encontrar uma vulnerabilidade?
-      # - O comando retorna um código de erro (código de saída diferente de 0)
-      # - O GitHub Actions interpreta isso como uma FALHA
-      # - O job fica vermelho e o merge é BLOQUEADO
-      # 
-      # Por que isso é importante?
-      # - Shift-Left: A segurança é verificada ANTES do código entrar na main
-      # - Evita que versões vulneráveis sejam implantadas em produção
-      # - É mais barato corrigir no PR do que depois em produção
-      # ----------------------------------------------------------------------
-
+      
       - name: Run pip-audit (security gate)
         run: pip-audit -r requirements.txt -r requirements-dev.txt
 
       # ----------------------------------------------------------------------
       # STEP 5: Run tests with pytest
       # ----------------------------------------------------------------------
-      # Função: Executa os testes unitários da aplicação
-      # 
-      # O que são testes unitários?
-      # - Pequenos testes que verificam se cada parte do código funciona
-      # - Ex: test_app.py testa se as rotas / e /healthz respondem corretamente
-      # 
-      # O comando pytest:
-      # - Executa todas as funções que começam com "test_" 
-      # - -v: Modo verboso (mostra mais detalhes no log)
-      # - Se algum teste falhar, o comando retorna erro e o job falha
-      # 
-      # Por que os testes são importantes?
-      # - Garantem que o código faz o que deveria fazer
-      # - Evitam que bugs cheguem à produção
-      # - Facilitam a manutenção: se algo quebrar, os testes avisam
-      # ----------------------------------------------------------------------
+      
 
       - name: Run tests with pytest
         run: pytest test_app.py -v
