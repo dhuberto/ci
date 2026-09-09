@@ -1,8 +1,9 @@
-# Início do arquivo requirements-dev.txt
-# Dependências de DESENVOLVIMENTO - usadas apenas durante testes/CI
+# ============================================================
+# DEPENDÊNCIAS DE DESENVOLVIMENTO
+# ============================================================
+# Pacotes usados apenas para testes e desenvolvimento.
+# Não são necessários em produção.
+# ============================================================
 
 pytest==7.4.3
 pip-audit==2.7.3
-safety==2.3.5
-
-# Fim do arquivo requirements-dev.txt
