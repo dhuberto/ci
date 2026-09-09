@@ -1,3 +1,5 @@
+[![.github/workflows/ci.yml](https://github.com/dhuberto/ci_/actions/workflows/ci.yml/badge.svg)](https://github.com/dhuberto/ci_/actions/workflows/ci.yml)
+
 ```
 ci_/                                         # Raiz do repositório
 │
