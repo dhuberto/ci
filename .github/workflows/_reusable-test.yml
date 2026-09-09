@@ -6,7 +6,7 @@
 # Disparo: NÃO é disparado por eventos (push/PR). É chamado pelo ci.yml via 'uses:'
 # =====================================================================
 
-name: Reusable Test Workflow
+name: Test Workflow
 
 # =====================================================================
 # BLOCO: on (workflow_call)
