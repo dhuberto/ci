@@ -18,3 +18,35 @@ ci_/                                         # Raiz do repositório
 ├── app.py                                  # Aplicação Flask
 └── test_app.py                             # Testes unitários da aplicação
 ```
+# CI/CD - Grupo dhuberto
+
+[![CI Pipeline](https://github.com/dhuberto/ci_/actions/workflows/ci.yml/badge.svg)](https://github.com/dhuberto/ci_/actions/workflows/ci.yml)
+
+## Checklist da Atividade 1
+
+- [x] Repositório privado no GitHub
+- [x] @HardSource adicionado como collaborator (Read)
+- [x] Branch `main` protegida com required status checks
+- [x] CODEOWNERS configurado
+- [x] `ci.yml` disparando em `pull_request` e `push` para `main`
+- [x] Testes automatizados com pytest
+- [x] Auditoria de dependências com pip-audit
+- [x] Matrix de Python (3.10 e 3.11)
+- [x] Cache de dependências (pip)
+- [x] Reusable workflow (`_reusable-test.yml`)
+- [x] `permissions:` explícito e mínimo
+- [x] Badge do pipeline no README
+- [x] Documentação em `docs/ci-pipeline.md`
+- [x] `workflow_dispatch` para execução manual
+
+## Como rodar localmente
+
+```bash
+# Instalar dependências
+pip install -r requirements.txt -r requirements-dev.txt
+
+# Rodar testes
+pytest test_app.py -v
+
+# Rodar pip-audit
+pip-audit -r requirements.txt -r requirements-dev.txt
