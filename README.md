@@ -62,6 +62,10 @@ source venv/bin/activate
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
 ```
+# Rodar pip-audit verificaçaõ manual de seguraça
+```bash
+pip-audit -r requirements.txt -r requirements-dev.txt
+```
 
 # Iniciar o servidor
 ```bash
@@ -80,8 +84,3 @@ http://localhost:5000/healthz
 ```
 
 # Deve retornar: {"status":"healthy"}
-
-
-
-# Rodar pip-audit
-pip-audit -r requirements.txt -r requirements-dev.txt
