@@ -1,11 +1,11 @@
 # ============================================================
-# REUSABLE TEST WORKFLOW
+# Teste Workflow Reutilizavel
 # ============================================================
-# Workflow reutilizável que contém a lógica de testes.
+# Workflow reutilizável contém a lógica de testes.
 # É chamado pelo ci.yml e NÃO é executado diretamente.
 # ============================================================
 
-name: Reusable Test Workflow
+name: Teste Workflow Reutilizavel
 
 # ============================================================
 # on: DEFINE como este workflow pode ser chamado
