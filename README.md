@@ -40,12 +40,48 @@ ci_/                                         # Raiz do repositório
 
 ## Como rodar localmente
 
-```bash
-# Instalar dependências
-pip install -r requirements.txt -r requirements-dev.txt
 
-# Rodar testes
-pytest test_app.py -v
+# Clonar para a maquina local o repositorio
+```bash
+git clone https://github.com/dhuberto/ci_.git
+cd ci_
+```
+
+# Criar o ambiente virtual
+```bash
+python3 -m venv venv
+```
+
+# Ativar o ambiente virtual
+# No Linux/Mac:
+```bash
+source venv/bin/activate
+```
+
+# Instalar as dependências
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+```
+
+# Iniciar o servidor
+```bash
+python app.py -v
+```
+
+# Testar rota raiz
+```bash
+http://localhost:5000/
+```
+# Deve retornar: {"message":"Hello, DevOps!"}
+
+# Testar health check
+```bash
+http://localhost:5000/healthz
+```
+
+# Deve retornar: {"status":"healthy"}
+
+
 
 # Rodar pip-audit
 pip-audit -r requirements.txt -r requirements-dev.txt
