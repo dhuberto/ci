@@ -1,155 +1,220 @@
-# =====================================================================
-# INÍCIO DO WORKFLOW REUTILIZÁVEL
-# =====================================================================
-# Nome: Reusable Test Workflow
-# Função: Contém a lógica de testes (setup, instalação, pytest, pip-audit)
-# Disparo: NÃO é disparado por eventos (push/PR). É chamado pelo ci.yml via 'uses:'
-# =====================================================================
+# ============================================================================
+# REUSABLE TEST WORKFLOW
+# ============================================================================
+# Este é um workflow REUTILIZÁVEL.
+# 
+# O que significa "reutilizável"?
+# - Ele não é executado diretamente por eventos (push, PR, etc.)
+# - Em vez disso, ele é CHAMADO por outros workflows usando "uses:"
+# - Isso permite que a lógica de testes seja compartilhada entre vários pipelines
+# 
+# Por que separar a lógica de testes?
+# - Mantém o ci.yml simples e focado em "quando executar"
+# - Este arquivo foca no "como executar" (os passos dos testes)
+# - Se precisar mudar os testes, muda apenas aqui
+# ============================================================================
 
 name: Test Workflow
 
-# =====================================================================
-# BLOCO: on (workflow_call)
-# =====================================================================
-# Função: Define que este workflow pode ser chamado por outro workflow.
-# inputs: Parâmetros que quem chama pode passar (ex: lista de versões do Python)
-# secrets: Segredos que podem ser passados do workflow chamador
-# =====================================================================
+# ============================================================================
+# BLOCO on: Define como este workflow pode ser chamado
+# ============================================================================
+# workflow_call: Significa que este workflow pode ser chamado por outro workflow
+# 
+# inputs: São parâmetros que quem chama pode passar
+#   - python-version: A lista de versões do Python para testar
+#   - O valor padrão é '["3.10", "3.11"]' se quem chama não passar nada
+# ============================================================================
 
 on:
   workflow_call:
     inputs:
       python-version:
-        description: 'Versões do Python para testar'
         required: true
         type: string
         default: '["3.10", "3.11"]'
-    secrets:
-      NOTIFY_WEBHOOK_URL:
-        required: false
 
-# =====================================================================
-# BLOCO: permissions
-# =====================================================================
-# Função: Define o que o GITHUB_TOKEN pode fazer neste workflow.
-# contents: read -> pode ler o código (necessário para checkout)
-# checks: write -> pode criar/atualizar status checks no PR
-# =====================================================================
+# ============================================================================
+# BLOCO permissions: Permissões mínimas necessárias
+# ============================================================================
+# contents: read -> Pode ler o código (necessário para o checkout)
+# checks: write  -> Pode criar/atualizar os status checks no PR
+# 
+# checks: write é importante porque permite que o GitHub mostre no PR
+# se os testes passaram ou falharam (verde ou vermelho)
+# ============================================================================
 
 permissions:
   contents: read
   checks: write
 
-# =====================================================================
-# BLOCO: jobs
-# =====================================================================
-# Função: Define os jobs que serão executados.
-# Neste caso, apenas o job 'test' com matrix de versões do Python.
-# =====================================================================
+# ============================================================================
+# BLOCO jobs: Define as tarefas que serão executadas
+# ============================================================================
 
 jobs:
+
+  # ==========================================================================
+  # JOB: test
+  # ==========================================================================
+  # Função: Executa testes em múltiplas versões do Python
+  # 
+  # O que acontece neste job:
+  # 1. Cria uma "matrix" (tabela) com as versões do Python
+  # 2. Para cada versão, executa os mesmos steps (checkout, setup, testes)
+  # 3. Os jobs rodam em PARALELO (ao mesmo tempo)
+  # 4. Se qualquer versão falhar, todo o pipeline é considerado falho
+  # 
+  # Por que testar em múltiplas versões?
+  # - Garante que o código funciona em diferentes ambientes
+  # - Evita surpresas quando a versão do Python for atualizada
+  # - É um requisito da atividade (matrix com pelo menos 2 versões)
+  # ==========================================================================
+
   test:
-    # Nome legível do job (aparece nos checks do PR)
     name: Test (Python ${{ matrix.python-version }})
-    
-    # Máquina onde o job roda
     runs-on: ubuntu-latest
-    
-    # ==================================================================
-    # BLOCO: strategy (matrix)
-    # ==================================================================
-    # Função: Cria múltiplas execuções paralelas, uma para cada versão do Python.
-    # python-version: Recebe a lista do input (convertida de JSON para lista)
+
+    # ========================================================================
+    # BLOCO strategy: Define a estratégia de execução (matrix)
+    # ========================================================================
+    # matrix: Cria múltiplas execuções, uma para cada item da lista
+    # python-version: A lista de versões vem do input do workflow
+    # fromJson: Converte a string JSON ('["3.10", "3.11"]') em uma lista real
     # fail-fast: false -> Se um job falhar, os outros continuam rodando
-    # ==================================================================
+    #   - Isso é útil para ver se outras versões também falham
+    #   - Se fosse true, ao primeiro erro todos os jobs seriam cancelados
+    # ========================================================================
+
     strategy:
       matrix:
         python-version: ${{ fromJson(inputs.python-version) }}
       fail-fast: false
 
-    # ==================================================================
-    # BLOCO: steps
-    # ==================================================================
-    # Função: Lista de passos executados em sequência dentro do job.
-    # ==================================================================
+    # ========================================================================
+    # BLOCO steps: Lista de passos executados em sequência
+    # ========================================================================
+    # Cada step é uma ação ou comando executado no runner (máquina virtual)
+    # Os steps rodam em ORDEM, do primeiro ao último
+    # Se um step falha, os seguintes não são executados (exceto com if: always())
+    # ========================================================================
 
     steps:
-      # ------------------------------------------------------------------
-      # STEP 1: Checkout code
-      # ------------------------------------------------------------------
-      # Função: Baixa o código do repositório para a máquina do runner.
-      # uses: actions/checkout@SHA (pinning por SHA para segurança)
-      # SHA é imutável, diferente de @v4 que pode mudar.
-      # ------------------------------------------------------------------
-      - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
-      # ------------------------------------------------------------------
+      # ----------------------------------------------------------------------
+      # STEP 1: Checkout code
+      # ----------------------------------------------------------------------
+      # Função: Baixa o código do repositório para a máquina do runner
+      # 
+      # O que é "checkout"?
+      # - É o ato de clonar o repositório na máquina virtual
+      # - Sem isso, o runner não tem acesso ao código para testar
+      # 
+      # actions/checkout@v4:
+      # - É uma action oficial do GitHub
+      # - @v4 significa "versão 4" (versão estável e testada)
+      # - O runner baixa a action e a executa
+      # ----------------------------------------------------------------------
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ----------------------------------------------------------------------
       # STEP 2: Setup Python
-      # ------------------------------------------------------------------
-      # Função: Instala a versão específica do Python e configura cache do pip.
-      # uses: actions/setup-python@SHA (pinning por SHA)
-      # with: 
-      #   - python-version: versão vinda da matrix
-      #   - cache: pip (ativa cache automático)
-      #   - cache-dependency-path: arquivos usados para calcular a chave do cache
-      # ------------------------------------------------------------------
+      # ----------------------------------------------------------------------
+      # Função: Instala a versão específica do Python no runner
+      # 
+      # Por que isso é necessário?
+      # - O runner (ubuntu-latest) não tem Python instalado por padrão
+      # - Precisamos instalar a versão correta para rodar os testes
+      # 
+      # actions/setup-python@v5:
+      # - Action oficial que instala o Python
+      # - Cache: pip -> Ativa o cache automático das dependências
+      #   - Na primeira execução, baixa tudo
+      #   - Na segunda execução, usa o cache (muito mais rápido)
+      #   - cache-dependency-path: Arquivo usado para criar a chave do cache
+      #     - Se o requirements.txt mudar, a chave muda e o cache é recriado
+      # ----------------------------------------------------------------------
+
       - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@b93645a1409291e3d7f3cb5a3f68217b2fbfb7f2  # v5.4.0
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            requirements-dev.txt
+          cache-dependency-path: requirements.txt
 
-      # ------------------------------------------------------------------
+      # ----------------------------------------------------------------------
       # STEP 3: Install dependencies
-      # ------------------------------------------------------------------
-      # Função: Instala todas as dependências (produção + desenvolvimento).
-      # run: Executa comandos no shell do runner.
-      # pip install -r: Instala todos os pacotes listados nos arquivos.
-      # ------------------------------------------------------------------
+      # ----------------------------------------------------------------------
+      # Função: Instala todas as dependências necessárias para rodar os testes
+      # 
+      # O que são dependências?
+      # - São pacotes/bibliotecas que o código precisa para funcionar
+      # - Ex: Flask (framework web), pytest (framework de testes)
+      # 
+      # O comando pip install:
+      # - Lê os arquivos requirements.txt e requirements-dev.txt
+      # - Baixa e instala todos os pacotes listados
+      # - requirements.txt: Dependências de produção (ex: Flask)
+      # - requirements-dev.txt: Dependências de desenvolvimento (ex: pytest)
+      # 
+      # Por que separar em dois arquivos?
+      # - Em produção, só precisamos do essencial
+      # - Em desenvolvimento, precisamos de ferramentas extras (testes, segurança)
+      # ----------------------------------------------------------------------
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
 
-      # ------------------------------------------------------------------
-      # STEP 4: pip-audit (Security Gate)
-      # ------------------------------------------------------------------
-      # Função: Escaneia dependências em busca de CVEs conhecidos.
-      # - Consulta o PyPI Advisory DB e OSV.
-      # - Se encontrar um CVE, retorna código de saída != 0 e falha o job.
-      # - Isso BLOQUEIA o merge (se o check for required).
-      # ------------------------------------------------------------------
+      # ----------------------------------------------------------------------
+      # STEP 4: Run pip-audit (security gate)
+      # ----------------------------------------------------------------------
+      # Função: Verifica se as dependências têm vulnerabilidades conhecidas
+      # 
+      # O que é pip-audit?
+      # - Uma ferramenta que consulta o banco de dados de vulnerabilidades
+      # - PyPI Advisory DB e OSV (banco de dados aberto de vulnerabilidades)
+      # 
+      # O que acontece se encontrar uma vulnerabilidade?
+      # - O comando retorna um código de erro (código de saída diferente de 0)
+      # - O GitHub Actions interpreta isso como uma FALHA
+      # - O job fica vermelho e o merge é BLOQUEADO
+      # 
+      # Por que isso é importante?
+      # - Shift-Left: A segurança é verificada ANTES do código entrar na main
+      # - Evita que versões vulneráveis sejam implantadas em produção
+      # - É mais barato corrigir no PR do que depois em produção
+      # ----------------------------------------------------------------------
+
       - name: Run pip-audit (security gate)
         run: pip-audit -r requirements.txt -r requirements-dev.txt
 
-      # ------------------------------------------------------------------
+      # ----------------------------------------------------------------------
       # STEP 5: Run tests with pytest
-      # ------------------------------------------------------------------
-      # Função: Executa os testes unitários.
-      # -v: modo verboso (mais detalhes no log)
-      # --junitxml: gera relatório no formato JUnit (pode ser usado por outras ferramentas)
-      # ------------------------------------------------------------------
+      # ----------------------------------------------------------------------
+      # Função: Executa os testes unitários da aplicação
+      # 
+      # O que são testes unitários?
+      # - Pequenos testes que verificam se cada parte do código funciona
+      # - Ex: test_app.py testa se as rotas / e /healthz respondem corretamente
+      # 
+      # O comando pytest:
+      # - Executa todas as funções que começam com "test_" 
+      # - -v: Modo verboso (mostra mais detalhes no log)
+      # - Se algum teste falhar, o comando retorna erro e o job falha
+      # 
+      # Por que os testes são importantes?
+      # - Garantem que o código faz o que deveria fazer
+      # - Evitam que bugs cheguem à produção
+      # - Facilitam a manutenção: se algo quebrar, os testes avisam
+      # ----------------------------------------------------------------------
+
       - name: Run tests with pytest
-        run: pytest test_app.py -v --junitxml=test-results.xml
+        run: pytest test_app.py -v
 
-      # ------------------------------------------------------------------
-      # STEP 6: Upload test results (opcional)
-      # ------------------------------------------------------------------
-      # Função: Salva o relatório de testes como artefato do workflow.
-      # if: always() -> Roda mesmo se steps anteriores falharem.
-      # path: caminho do arquivo a ser salvo.
-      # ------------------------------------------------------------------
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results-python-${{ matrix.python-version }}
-          path: test-results.xml
-
-# =====================================================================
+# ============================================================================
 # FIM DO WORKFLOW REUTILIZÁVEL
-# =====================================================================
+# ============================================================================
