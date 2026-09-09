@@ -20,7 +20,6 @@ ci_/                                         # Raiz do repositório
 ```
 # CI/CD - Grupo dhuberto
 
-[![CI Pipeline](https://github.com/dhuberto/ci_/actions/workflows/ci.yml/badge.svg)](https://github.com/dhuberto/ci_/actions/workflows/ci.yml)
 
 ## Checklist da Atividade 1
 
