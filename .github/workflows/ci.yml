@@ -1,27 +1,12 @@
 # ============================================================================
 # CI PIPELINE - GitHub Actions
 # ============================================================================
-# Este arquivo define o pipeline de Integração Contínua (CI) do projeto.
-# 
-# O que ele faz:
-# 1. Executa testes automatizados em múltiplas versões do Python
-# 2. Verifica se as dependências têm vulnerabilidades conhecidas
-# 3. Bloqueia o merge se qualquer verificação falhar
-# 
-# Quando ele roda:
-# - Quando alguém abre um Pull Request para a branch main
-# - Quando alguém faz um push diretamente na branch main
-# - Manualmente, pela aba Actions do GitHub
-# ============================================================================
+
 
 name: CI Pipeline
 
 # ============================================================================
 # BLOCO on: Define QUANDO este workflow será executado
-# ============================================================================
-# pull_request: Roda quando um PR é aberto ou atualizado
-# push: Roda quando há um novo commit na branch
-# workflow_dispatch: Permite executar manualmente pelo botão "Run workflow"
 # ============================================================================
 
 on:
@@ -34,13 +19,7 @@ on:
 # ============================================================================
 # BLOCO permissions: Define o que este workflow pode fazer
 # ============================================================================
-# contents: read    -> Pode ler o código do repositório (necessário para testar)
-# pull-requests: write -> Pode comentar em PRs (para mostrar o status dos checks)
-# 
-# Por que isso é importante?
-# - Segurança: o workflow só tem as permissões mínimas necessárias
-# - Se o workflow for comprometido, o dano é limitado
-# ============================================================================
+
 
 permissions:
   contents: read
@@ -49,28 +28,13 @@ permissions:
 # ============================================================================
 # BLOCO jobs: Define as tarefas que serão executadas
 # ============================================================================
-# Este workflow tem apenas um job, que chama um workflow reutilizável.
-# A lógica de testes está separada no arquivo _reusable-test.yml.
-# Isso mantém este arquivo simples e organizado.
-# ============================================================================
 
 jobs:
 
   # ==========================================================================
   # JOB: test
   # ==========================================================================
-  # Função: Executa os testes e verificações de segurança
-  # 
-  # O que este job faz:
-  # 1. Chama o workflow reutilizável _reusable-test.yml
-  # 2. Passa a lista de versões do Python para serem testadas
-  # 3. O workflow reutilizável faz o resto (setup, instalação, testes)
-  # 
-  # Por que usar um workflow reutilizável?
-  # - Evita repetir o mesmo código YAML em vários lugares
-  # - Facilita a manutenção: mudanças ficam em um único arquivo
-  # - É uma boa prática chamada DRY (Don't Repeat Yourself)
-  # ==========================================================================
+  
 
   test:
     name: Test
