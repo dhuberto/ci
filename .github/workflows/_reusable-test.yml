@@ -3,6 +3,7 @@
 # ============================================================
 # Workflow reutilizável que contém a lógica de testes.
 # É chamado pelo ci.yml e NÃO é executado diretamente.
+# Atende aos requisitos: Testes, auditoria, scan, matrix, cache.
 # ============================================================
 
 name: Reusable Test Workflow
@@ -75,6 +76,7 @@ jobs:
       # ------------------------------------------------------
       # cache: pip -> Ativa o cache de dependências (mais rápido)
       # cache-dependency-path: Arquivo usado para gerar a chave do cache
+      # Atende ao requisito: Cache de dependências.
       # ------------------------------------------------------
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -92,16 +94,36 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
 
       # ------------------------------------------------------
-      # STEP 4: Verificar vulnerabilidades (pip-audit)
+      # STEP 4: Escanear com Trivy (scan de vulnerabilidades)
+      # ------------------------------------------------------
+      # Trivy escaneia o código e dependências (SO + bibliotecas).
+      # Falha se encontrar vulnerabilidades de severidade MEDIUM, HIGH ou CRITICAL.
+      # Atende ao requisito: Scan de vulnerabilidades.
+      # ------------------------------------------------------
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          exit-code: '1'
+          severity: MEDIUM,HIGH,CRITICAL
+          vuln-type: os,library
+
+      # ------------------------------------------------------
+      # STEP 5: Verificar vulnerabilidades em pacotes Python (pip-audit)
       # ------------------------------------------------------
       # Se encontrar um CVE, o comando falha e bloqueia o merge.
       # Este é o GATE de segurança do pipeline.
+      # Atende ao requisito: Auditoria de dependências.
       # ------------------------------------------------------
       - name: Run pip-audit (security gate)
         run: pip-audit -r requirements.txt -r requirements-dev.txt
 
       # ------------------------------------------------------
-      # STEP 5: Executar testes unitários (pytest)
+      # STEP 6: Executar testes unitários (pytest)
+      # ------------------------------------------------------
+      # Atende ao requisito: Testes automatizados.
       # ------------------------------------------------------
       - name: Run tests with pytest
         run: pytest test_app.py -v
