@@ -1,1 +1,7 @@
+# Início do arquivo requirements.txt
+# Dependências de PRODUÇÃO - necessárias para a aplicação rodar
 
+Flask==3.0.0
+requests==2.33.0
+
+# Fim do arquivo requirements.txt
