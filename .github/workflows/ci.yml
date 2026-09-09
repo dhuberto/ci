@@ -1,1 +1,175 @@
+# =====================================================================
+# INÍCIO DO PIPELINE PRINCIPAL
+# =====================================================================
+# Nome: CI Pipeline
+# Função: Pipeline principal de Integração Contínua.
+# Disparo: Em pull_request para main e em push para main.
+# =====================================================================
 
+name: CI Pipeline
+
+# =====================================================================
+# BLOCO: on (eventos de disparo)
+# =====================================================================
+# Função: Define quando o workflow é executado.
+# pull_request: Dispara quando um PR é aberto, atualizado ou sincronizado.
+# push: Dispara quando há um push na branch.
+# branches: [ main ] -> Restringe os eventos apenas para a branch main.
+# =====================================================================
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+# =====================================================================
+# BLOCO: env (variáveis de ambiente)
+# =====================================================================
+# Função: Define variáveis disponíveis para TODO o workflow.
+# PYTHON_VERSIONS: Lista de versões do Python (em formato JSON).
+# Vantagem: Evita hardcoding no YAML; fácil de mudar todas as versões.
+# =====================================================================
+
+env:
+  PYTHON_VERSIONS: '["3.10", "3.11"]'
+
+# =====================================================================
+# BLOCO: permissions (permissões do workflow)
+# =====================================================================
+# Função: Define o que o GITHUB_TOKEN pode fazer neste workflow.
+# contents: read -> pode ler o código (necessário para checkout)
+# pull-requests: write -> pode comentar/adicionar labels em PRs
+# security-events: write -> pode enviar resultados de scan para a aba Security
+# =====================================================================
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+# =====================================================================
+# BLOCO: jobs
+# =====================================================================
+# Função: Define os jobs que serão executados.
+# =====================================================================
+
+jobs:
+
+  # ====================================================================
+  # JOB 1: test
+  # ====================================================================
+  # Função: Chama o workflow reutilizável que contém a lógica de testes.
+  # uses: Caminho para o workflow reutilizável (dentro do mesmo repo).
+  # with: Passa os inputs para o reusable (lista de versões do Python).
+  # secrets: Passa segredos para o reusable (webhook URL).
+  # ====================================================================
+
+  test:
+    name: Test
+    uses: ./.github/workflows/_reusable-test.yml
+    with:
+      python-version: ${{ env.PYTHON_VERSIONS }}
+    secrets:
+      NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+
+  # ====================================================================
+  # JOB 2: security-scan
+  # ====================================================================
+  # Função: Escaneia vulnerabilidades com Trivy (código + dependências).
+  # needs: test -> Só roda depois que o job 'test' completar.
+  # environment: production -> Usa o environment com required reviewers.
+  # permissions: Sobrescreve as permissões do workflow para este job.
+  # ====================================================================
+
+  security-scan:
+    name: Security Scan with Trivy
+    runs-on: ubuntu-latest
+    needs: test
+    environment: production
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      # ------------------------------------------------------------------
+      # STEP 1: Checkout code
+      # ------------------------------------------------------------------
+      # Função: Baixa o código do repositório.
+      # SHA pinning para segurança.
+      # ------------------------------------------------------------------
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      # ------------------------------------------------------------------
+      # STEP 2: Setup Python
+      # ------------------------------------------------------------------
+      # Função: Instala Python 3.10 para executar o Trivy.
+      # (Trivy é uma action, mas o setup-python é necessário para instalar dependências)
+      # ------------------------------------------------------------------
+      - name: Setup Python
+        uses: actions/setup-python@b93645a1409291e3d7f3cb5a3f68217b2fbfb7f2  # v5.4.0
+        with:
+          python-version: '3.10'
+
+      # ------------------------------------------------------------------
+      # STEP 3: Install dependencies
+      # ------------------------------------------------------------------
+      # Função: Instala apenas as dependências de produção (requirements.txt).
+      # (O Trivy escaneia essas dependências em busca de vulnerabilidades)
+      # ------------------------------------------------------------------
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # ------------------------------------------------------------------
+      # STEP 4: Run Trivy
+      # ------------------------------------------------------------------
+      # Função: Escaneia o código e dependências em busca de vulnerabilidades.
+      # uses: aquasecurity/trivy-action (SHA pinning)
+      # with:
+      #   - scan-type: fs (filesystem - escaneia o diretório atual)
+      #   - scan-ref: . (diretório atual)
+      #   - format: table (saída legível no log)
+      #   - exit-code: '1' (falha o job se encontrar vulnerabilidades)
+      #   - severity: MEDIUM,HIGH,CRITICAL (níveis que causam falha)
+      #   - vuln-type: os,library (escaneia SO + bibliotecas Python)
+      # ------------------------------------------------------------------
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@f42b6a2f8a1c1b3f4c5d6e7f8a9b0c1d2e3f4a5b  # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          exit-code: '1'
+          severity: MEDIUM,HIGH,CRITICAL
+          vuln-type: os,library
+
+  # ====================================================================
+  # JOB 3: notify
+  # ====================================================================
+  # Função: Envia notificação sobre o status do pipeline para Slack/Discord.
+  # needs: [test, security-scan] -> Depende de ambos os jobs anteriores.
+  # if: always() -> Roda SEMPRE, mesmo se os jobs anteriores falharem.
+  # if: secrets.NOTIFY_WEBHOOK_URL != '' -> Só roda se o secret existir.
+  # run: curl - Envia uma requisição HTTP POST com o status.
+  # ====================================================================
+
+  notify:
+    name: Notify status
+    runs-on: ubuntu-latest
+    needs: [test, security-scan]
+    if: always()
+    permissions:
+      contents: read
+    steps:
+      - name: Send notification
+        if: ${{ secrets.NOTIFY_WEBHOOK_URL != '' }}
+        run: |
+          curl -X POST ${{ secrets.NOTIFY_WEBHOOK_URL }} \
+            -H "Content-Type: application/json" \
+            -d '{
+              "content": "🔔 **Pipeline Status**\nWorkflow: ${{ github.workflow }}\nStatus: ${{ job.status }}\nBranch: ${{ github.ref_name }}\nCommit: ${{ github.sha }}\nLink: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }'
+
+# =====================================================================
+# FIM DO PIPELINE PRINCIPAL (ci.yml)
+# =====================================================================
