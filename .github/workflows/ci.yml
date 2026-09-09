@@ -70,3 +70,19 @@ jobs:
             echo "status=FALHA" >> "$GITHUB_OUTPUT"
             echo "color=15158332" >> "$GITHUB_OUTPUT"
           fi
+          # envia teste online
+      - name: Send webhook
+        run: |
+          curl -X POST -H 'Content-Type: application/json' \
+            -d '{
+              "embeds": [{
+                "title": "${{ steps.msg.outputs.status }} ${{ github.repository }}",
+                "color": ${{ steps.msg.outputs.color }},
+                "fields": [
+                  {"name": "Branch", "value": "${{ github.ref_name }}", "inline": true},
+                  {"name": "Author", "value": "${{ github.actor }}", "inline": true}
+                ],
+                "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              }]
+            }' \
+            "${{ secrets.NOTIFY_WEBHOOK_URL }}"
