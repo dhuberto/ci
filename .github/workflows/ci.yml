@@ -6,7 +6,7 @@
 # Disparo: Em pull_request para main e em push para main.
 # =====================================================================
 
-name: CI
+name: Action CI
 
 # =====================================================================
 # BLOCO: on (eventos de disparo)
