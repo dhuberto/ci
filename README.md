@@ -1,4 +1,5 @@
-ci_/                                 # Raiz do repositório
+```
+ci_/                                         # Raiz do repositório
 │
 ├── .github/                                # Pasta especial do GitHub
 │   ├── CODEOWNERS                          # Define quem revisa os PRs
@@ -14,3 +15,4 @@ ci_/                                 # Raiz do repositório
 ├── requirements-dev.txt                    # Dependências de desenvolvimento (testes, segurança)
 ├── app.py                                  # Aplicação Flask
 └── test_app.py                             # Testes unitários da aplicação
+```
