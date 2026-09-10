@@ -65,3 +65,16 @@ jobs:
             echo "status=FALHA" >> "$GITHUB_OUTPUT"
             echo "color=15158332" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Show result
+        run: |
+          echo "Status: ${{ steps.msg.outputs.status }}"
+          echo "Color: ${{ steps.msg.outputs.color }}"
+
+      # Novo step: falha o job se o test nao passou
+      - name: Fail if tests failed
+        if: needs.test.result != 'success'
+        run: |
+          echo "O job de testes falhou (resultado: ${{ needs.test.result }})."
+          echo "Marcando o job notify como falha para reforcar o bloqueio."
+          exit 1
