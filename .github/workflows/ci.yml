@@ -1,76 +1,39 @@
-# ============================================================
-# CI PIPELINE - GitHub Actions
-# ============================================================
+name: CI
 
-name: CI Pipeline
-
+# Gatilhos: push na main e tags, PR para main, e execucao manual
 on:
-  pull_request:
-    branches: [ main, developer ]
   push:
-    branches: [ main, developer ]
-  workflow_dispatch:
+    branches: [main]
+    tags: ['*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch: # Habilita o botao para rodar manualmente na aba Actions
 
+# Permissoes minimas: apenas leitura do codigo
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
-  # ==========================================================
-  # JOB: test
-  # ==========================================================
+  # Job de testes: delega para o workflow reutilizavel
   test:
     name: Test
     uses: ./.github/workflows/_reusable-test.yml
 
-  # ==========================================================
-  # JOB: notify
-  # ==========================================================
+  # Job de notificacao: reporta o resultado da pipeline
   notify:
-    name: Notificacao resultado da pipeline
+    name: Notify pipeline result
     needs: [test]
-    if: always()
+    if: always() # Roda mesmo se o job "test" falhar
     runs-on: ubuntu-latest
     steps:
+      # Monta a mensagem com status e cor conforme o resultado
       - name: Compose message
         id: msg
         run: |
-          TEST_RESULT="${{ needs.test.result }}"
-          REASON="${{ needs.test.outputs.failure-reason }}"
-
-          echo "DEBUG - test.result: $TEST_RESULT"
-          echo "DEBUG - failure-reason: $REASON"
-
-          if [ "$TEST_RESULT" = "success" ]; then
+          if [ "${{ needs.test.result }}" = "success" ]; then
             echo "status=SUCESSO" >> "$GITHUB_OUTPUT"
             echo "color=3066993" >> "$GITHUB_OUTPUT"
-            echo "reason=Todos os gates passaram." >> "$GITHUB_OUTPUT"
           else
             echo "status=FALHA" >> "$GITHUB_OUTPUT"
             echo "color=15158332" >> "$GITHUB_OUTPUT"
-
-            if [ -z "$REASON" ] || [ "$REASON" = "null" ]; then
-              REASON="Pipeline falhou, mas o motivo nao foi propagado do reusable workflow."
-            fi
-
-            {
-              echo "reason<<EOF"
-              echo "$REASON"
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Show result
-        run: |
-          echo "Status: ${{ steps.msg.outputs.status }}"
-          echo "Color: ${{ steps.msg.outputs.color }}"
-          echo "Motivo: ${{ steps.msg.outputs.reason }}"
-
-      - name: Fail if tests failed
-        if: needs.test.result != 'success'
-        run: |
-          echo "O job de testes falhou (resultado: ${{ needs.test.result }})."
-          echo "Motivo: ${{ steps.msg.outputs.reason }}"
-          exit 1
-          echo "Motivo: ${{ steps.msg.outputs.reason }}"
-          exit 1
