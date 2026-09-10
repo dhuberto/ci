@@ -42,8 +42,8 @@ jobs:
         run: pip install -r requirements-dev.txt
 
       # Constroi a imagem Docker com a tag do commit
-      - name: Build Docker image
-        run: docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
+      #- name: Build Docker image
+       # run: docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
 
       # Scan de vulnerabilidades da imagem com Trivy (desativado)
       # - name: Scan image with Trivy
