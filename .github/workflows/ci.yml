@@ -48,8 +48,8 @@ jobs:
     name: Test
     # Chama o workflow reutilizável com a lógica de testes
     uses: ./.github/workflows/_reusable-test.yml
-   
-   notify:
+  
+  notify:
     name: Notify pipeline result
     needs: [test]
     if: always() # Garante que rode mesmo se o job "test" falhar
