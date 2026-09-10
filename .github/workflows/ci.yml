@@ -75,3 +75,15 @@ jobs:
           echo "status=DESCONHECIDO ($RESULT)" >> "$GITHUB_OUTPUT"
           echo "color=15158332" >> "$GITHUB_OUTPUT"
         fi
+         - name: Send notification
+            run: |
+            echo "Status: ${{ steps.msg.outputs.status }}"
+            echo "Cor: ${{ steps.msg.outputs.color }}"
+            # Aqui você coloca o envio real (webhook, Slack, etc.)
+
+          # ADICIONE ESTE STEP PARA FALHAR O JOB SE O TEST FALHOU
+        - name: Fail if tests failed
+          if: needs.test.result != 'success'
+            run: |
+          echo "❌ O job de testes falhou. Marcando notify como falha também."
+          exit 1
