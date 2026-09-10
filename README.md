@@ -1,7 +1,7 @@
-[![.github/workflows/ci.yml](https://github.com/dhuberto/ci_/actions/workflows/ci.yml/badge.svg)](https://github.com/dhuberto/ci_/actions/workflows/ci.yml)
+[![.github/workflows/ci.yml](https://github.com/dhuberto/ci/actions/workflows/ci.yml/badge.svg)](https://github.com/dhuberto/ci/actions/workflows/ci.yml)
 
 ```
-ci_/                                         # Raiz do repositório
+ci/                                         # Raiz do repositório
 │
 ├── .github/                                # Pasta especial do GitHub
 │   ├── CODEOWNERS                          # Define quem revisa os PRs
@@ -43,8 +43,8 @@ ci_/                                         # Raiz do repositório
 
 # Clonar para a maquina local o repositorio
 ```bash
-git clone https://github.com/dhuberto/ci_.git
-cd ci_
+git clone https://github.com/dhuberto/ci.git
+cd ci
 ```
 
 # Criar o ambiente virtual
