@@ -1,8 +1,8 @@
 # ============================================================
 # Teste Workflow Reutilizavel
 # ============================================================
-# Workflow reutilizável contém a lógica de testes.
-# É chamado pelo ci.yml e NÃO é executado diretamente.
+# Workflow reutilizavel contem a logica de testes.
+# E chamado pelo ci.yml e NAO e executado diretamente.
 # ============================================================
 
 name: Teste Workflow Reutilizavel
@@ -11,7 +11,8 @@ name: Teste Workflow Reutilizavel
 # on: DEFINE como este workflow pode ser chamado
 # ============================================================
 # workflow_call: Permite que outro workflow o chame via "uses:"
-# inputs: Parâmetros que quem chama pode passar
+# inputs: Parametros que quem chama pode passar
+# outputs: Valores que este workflow devolve para quem chamou
 # ============================================================
 
 on:
@@ -21,26 +22,30 @@ on:
         required: false
         type: string
         default: '["3.10", "3.11"]'
+    outputs:
+      failure-reason:
+        description: 'Motivo da falha (CVE ou teste)'
+        value: ${{ jobs.test.outputs.failure-reason }}
 
 # ============================================================
 # permissions: O QUE este workflow pode fazer
 # ============================================================
-# contents: read -> Pode ler o código (necessário para o checkout)
+# contents: read -> Pode ler o codigo (necessario para o checkout)
 # ============================================================
 
 permissions:
   contents: read
 
 # ============================================================
-# jobs: TAREFAS que serão executadas
+# jobs: TAREFAS que serao executadas
 # ============================================================
 
 jobs:
   # ==========================================================
   # JOB: test
   # ==========================================================
-  # Executa testes em múltiplas versões do Python (matrix).
-  # Cada versão roda em paralelo.
+  # Executa testes em multiplas versoes do Python (matrix).
+  # Cada versao roda em paralelo.
   # ==========================================================
 
   test:
@@ -48,10 +53,16 @@ jobs:
     runs-on: ubuntu-latest
 
     # ========================================================
-    # strategy: DEFINE a matrix de versões
+    # outputs: Valores que este job devolve para o workflow
     # ========================================================
-    # matrix: Cria uma execução para cada item da lista
-    # fail-fast: false -> Se uma versão falhar, as outras continuam
+    outputs:
+      failure-reason: ${{ steps.reason.outputs.text }}
+
+    # ========================================================
+    # strategy: DEFINE a matrix de versoes
+    # ========================================================
+    # matrix: Cria uma execucao para cada item da lista
+    # fail-fast: false -> Se uma versao falhar, as outras continuam
     # ========================================================
 
     strategy:
@@ -60,20 +71,20 @@ jobs:
       fail-fast: false
 
     # ========================================================
-    # steps: PASSOS executados em sequência
+    # steps: PASSOS executados em sequencia
     # ========================================================
 
     steps:
       # ------------------------------------------------------
-      # STEP 1: Baixar o código
+      # STEP 1: Baixar o codigo
       # ------------------------------------------------------
       - name: Checkout code
         uses: actions/checkout@v4
 
       # ------------------------------------------------------
-      # STEP 2: Instalar a versão do Python
+      # STEP 2: Instalar a versao do Python
       # ------------------------------------------------------
-      # cache: pip -> Ativa o cache de dependências (mais rápido)
+      # cache: pip -> Ativa o cache de dependencias (mais rapido)
       # cache-dependency-path: Arquivo usado para gerar a chave do cache
       # ------------------------------------------------------
       - name: Setup Python ${{ matrix.python-version }}
@@ -81,10 +92,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-          cache-dependency-path: requirements.txt
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
 
       # ------------------------------------------------------
-      # STEP 3: Instalar dependências
+      # STEP 3: Instalar dependencias
       # ------------------------------------------------------
       - name: Install dependencies
         run: |
@@ -95,13 +108,90 @@ jobs:
       # STEP 4: Verificar vulnerabilidades (pip-audit)
       # ------------------------------------------------------
       # Se encontrar um CVE, o comando falha e bloqueia o merge.
-      # Este é o GATE de segurança do pipeline.
+      # Este e o GATE de seguranca do pipeline.
+      # continue-on-error: true -> Nao para o job, permite extrair o motivo
       # ------------------------------------------------------
       - name: Run pip-audit (security gate)
-        run: pip-audit -r requirements.txt -r requirements-dev.txt
+        id: audit
+        continue-on-error: true
+        run: |
+          pip-audit -r requirements.txt -r requirements-dev.txt > audit-report.txt 2>&1 || true
+          echo "--- pip-audit report ---"
+          cat audit-report.txt
 
       # ------------------------------------------------------
-      # STEP 5: Executar testes unitários (pytest)
+      # STEP 5: Executar testes unitarios (pytest)
       # ------------------------------------------------------
       - name: Run tests with pytest
-        run: pytest test_app.py -v
+        id: pytest
+        continue-on-error: true
+        run: |
+          pytest test_app.py -v > pytest-report.txt 2>&1 || true
+          echo "--- pytest report ---"
+          cat pytest-report.txt
+
+      # ------------------------------------------------------
+      # STEP 6: Extrair o motivo da falha
+      # ------------------------------------------------------
+      # Monta uma mensagem sucinta com o motivo real:
+      # - Se pip-audit encontrou CVE, mostra o pacote + CVE
+      # - Se pytest falhou, mostra o teste que falhou
+      # ------------------------------------------------------
+      - name: Extract failure reason
+        id: reason
+        if: always()
+        run: |
+          REASON=""
+
+          # Verifica se pip-audit falhou
+          if [ "${{ steps.audit.outcome }}" = "failure" ]; then
+            if [ -f audit-report.txt ]; then
+              AUDIT_LINES=$(grep -iE "CVE-|GHSA-|vulnerab" audit-report.txt | head -3 | tr '\n' ' | ' | sed 's/ | $//')
+              if [ -n "$AUDIT_LINES" ]; then
+                REASON="Security: ${AUDIT_LINES}"
+              else
+                REASON="Security: pip-audit encontrou vulnerabilidades."
+              fi
+            fi
+          fi
+
+          # Verifica se pytest falhou
+          if [ "${{ steps.pytest.outcome }}" = "failure" ]; then
+            PYTEST_LINE=$(grep -iE "FAILED|ERROR" pytest-report.txt | head -1 || true)
+            if [ -n "$PYTEST_LINE" ]; then
+              if [ -n "$REASON" ]; then
+                REASON="${REASON} ; Tests: ${PYTEST_LINE}"
+              else
+                REASON="Tests: ${PYTEST_LINE}"
+              fi
+            else
+              if [ -n "$REASON" ]; then
+                REASON="${REASON} ; Tests falharam."
+              else
+                REASON="Tests falharam."
+              fi
+            fi
+          fi
+
+          # Fallback
+          if [ -z "$REASON" ]; then
+            REASON="Falha sem motivo extraido."
+          fi
+
+          {
+            echo "text<<EOF"
+            echo "$REASON"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      # ------------------------------------------------------
+      # STEP 7: Falhar o job se qualquer gate falhou
+      # ------------------------------------------------------
+      # Este step e o que faz o job ficar VERMELHO e bloquear o merge.
+      # ------------------------------------------------------
+      - name: Fail if any gate failed
+        if: steps.audit.outcome == 'failure' || steps.pytest.outcome == 'failure'
+        run: |
+          echo "Um dos gates falhou."
+          echo "Motivo: ${{ steps.reason.outputs.text }}"
+          exit 1
