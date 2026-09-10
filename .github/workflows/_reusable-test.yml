@@ -10,10 +10,6 @@ on:
         type: string
         default: '["3.10", "3.11", "3.12"]'
 
-# Variaveis de ambiente do workflow
-#env:
- #IMAGE_NAME: app-k8s-todolist
-
 jobs:
   # Job de testes: roda em matrix de versoes do Python
   test:
@@ -35,32 +31,21 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-          cache-dependency-path: requirements-dev.txt
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
 
-      # Instala as dependencias de desenvolvimento
-      - name: Install dev dependencies
-        run: pip install -r requirements-dev.txt
-
-      # Constroi a imagem Docker com a tag do commit
-      #- name: Build Docker image
-       # run: docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
-
-      # Scan de vulnerabilidades da imagem com Trivy (desativado)
-      # - name: Scan image with Trivy
-      #   uses: aquasecurity/trivy-action@v0.36.0
-      #   with:
-      #     image-ref: ${{ env.IMAGE_NAME }}:${{ github.sha }}
-      #     format: table
-      #     exit-code: '1'
-      #     ignore-unfixed: true
-      #     vuln-type: os,library
-      #     severity: MEDIUM,HIGH,CRITICAL
-      #     skip-setup-trivy: false
+      # Instala as dependencias de producao e desenvolvimento
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
 
       # Executa os testes unitarios
       - name: Run pytest
         run: pytest -q
 
+      # Audita as dependencias em busca de vulnerabilidades conhecidas
+      - name: Audit dependencies
+        run: pip-audit -r requirements.txt
       # Audita as dependencias em busca de vulnerabilidades conhecidas
       - name: Audit dependencies
         run: pip-audit -r requirements.txt
