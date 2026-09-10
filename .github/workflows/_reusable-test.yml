@@ -11,8 +11,8 @@ on:
         default: '["3.10", "3.11", "3.12"]'
 
 # Variaveis de ambiente do workflow
-env:
- IMAGE_NAME: app-k8s-todolist
+#env:
+ #IMAGE_NAME: app-k8s-todolist
 
 jobs:
   # Job de testes: roda em matrix de versoes do Python
