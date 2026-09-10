@@ -50,7 +50,7 @@ jobs:
     uses: ./.github/workflows/_reusable-test.yml
   
   notify:
-    name: Nitificacao do resultado da pipeline
+    name: Notificacao resultado da pipeline
     needs: [test]
     if: always() # Garante que rode mesmo se o job "test" falhar
     runs-on: ubuntu-latest
