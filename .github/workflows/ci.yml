@@ -23,7 +23,7 @@ jobs:
   notify:
     name: Notify pipeline result
     needs: [test]
-    if: always() # Roda mesmo se o job "test" falhar
+   # if: always() # Roda mesmo se o job "test" falhar
     runs-on: ubuntu-latest
     steps:
       # Monta a mensagem com status e cor conforme o resultado
