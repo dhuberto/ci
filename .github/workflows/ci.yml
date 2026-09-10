@@ -44,43 +44,24 @@ jobs:
   # Chama o workflow reutilizável que contém a lógica de testes.
   # Isso mantém este arquivo simples e organizado.
   # ==========================================================
-
   test:
     name: Test
+    # Chama o workflow reutilizável com a lógica de testes
     uses: ./.github/workflows/_reusable-test.yml
-    with:
-      # Lista de versões do Python que serão testadas (matrix)
-      python-version: '["3.10", "3.11"]'
-
- notify:
-  name: Notify pipeline result
-  needs: [test]
-  if: always()
-  runs-on: ubuntu-latest
-  steps:
-    - name: Compose message
-      id: msg
-      run: |
-        RESULT="${{ needs.test.result }}"
-        echo "Resultado do job test: $RESULT"
-
-        if [ "$RESULT" = "success" ]; then
-          echo "status=SUCESSO" >> "$GITHUB_OUTPUT"
-          echo "color=3066993" >> "$GITHUB_OUTPUT"
-        else
-          echo "status=FALHA" >> "$GITHUB_OUTPUT"
-          echo "color=15158332" >> "$GITHUB_OUTPUT"
-        fi
-
-    - name: Send notification
-      run: |
-        echo "Status: ${{ steps.msg.outputs.status }}"
-        echo "Cor: ${{ steps.msg.outputs.color }}"
-        # Aqui você coloca o envio real (webhook, Slack, etc.)
-
-    # ⬇️ ADICIONE ESTE STEP PARA FALHAR O JOB SE O TEST FALHOU
-    - name: Fail if tests failed
-      if: needs.test.result != 'success'
-      run: |
-        echo "❌ O job de testes falhou. Marcando notify como falha também."
-        exit 1
+   
+   notify:
+    name: Notify pipeline result
+    needs: [test]
+    if: always() # Garante que rode mesmo se o job "test" falhar
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compose message
+        id: msg
+        run: |
+          if [ "${{ needs.test.result }}" = "success" ]; then
+            echo "status=SUCESSO" >> "$GITHUB_OUTPUT"
+            echo "color=3066993" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=FALHA" >> "$GITHUB_OUTPUT"
+            echo "color=15158332" >> "$GITHUB_OUTPUT"
+          fi
