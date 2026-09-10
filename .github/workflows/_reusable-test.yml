@@ -1,150 +1,66 @@
-name: Teste Workflow Reutilizavel
+name: Reusable test
 
+# Gatilho: chamado por outro workflow via "uses:"
 on:
   workflow_call:
     inputs:
-      python-version:
+      python-versions:
+        description: JSON array of Python versions to test against
         required: false
         type: string
-        default: '["3.10", "3.11"]'
-    outputs:
-      failure-reason:
-        description: 'Motivo da falha (CVE, teste ou install)'
-        value: ${{ jobs.test.outputs.failure-reason }}
+        default: '["3.10", "3.11", "3.12"]'
 
-permissions:
-  contents: read
+# Variaveis de ambiente do workflow
+env:
+  IMAGE_NAME: app-k8s-todolist
 
 jobs:
+  # Job de testes: roda em matrix de versoes do Python
   test:
     name: Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
-
-    outputs:
-      failure-reason: ${{ steps.reason.outputs.text }}
-
     strategy:
+      fail-fast: false # Se uma versao falhar, as outras continuam
       matrix:
-        python-version: ${{ fromJson(inputs.python-version) }}
-      fail-fast: false
-
+        python-version: ${{ fromJSON(inputs.python-versions) }}
     steps:
-      - name: Checkout code
+      # Baixa o codigo do repositorio
+      - name: Checkout
+        # Dica de seguranca da aula: substituir @v4 pelo hash SHA do commit em producao
         uses: actions/checkout@v4
 
-      - name: Setup Python ${{ matrix.python-version }}
+      # Instala a versao do Python com cache de dependencias
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            requirements-dev.txt
+          cache-dependency-path: requirements-dev.txt
 
-      # ------------------------------------------------------
-      # INSTALL: com continue-on-error para nao parar o job
-      # ------------------------------------------------------
-      - name: Install dependencies
-        id: install
-        continue-on-error: true
-        run: |
-          python -m pip install --upgrade pip > install-report.txt 2>&1 || true
-          pip install -r requirements.txt -r requirements-dev.txt >> install-report.txt 2>&1 || true
-          echo "--- install report ---"
-          cat install-report.txt
+      # Instala as dependencias de desenvolvimento
+      - name: Install dev dependencies
+        run: pip install -r requirements-dev.txt
 
-      # ------------------------------------------------------
-      # GATE DE SEGURANCA: pip-audit
-      # ------------------------------------------------------
-      - name: Run pip-audit (security gate)
-        id: audit
-        if: steps.install.outcome == 'success'
-        continue-on-error: true
-        run: |
-          pip-audit -r requirements.txt -r requirements-dev.txt > audit-report.txt 2>&1 || true
-          echo "--- pip-audit report ---"
-          cat audit-report.txt
+      # Constroi a imagem Docker com a tag do commit
+      - name: Build Docker image
+        run: docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
 
-      # ------------------------------------------------------
-      # GATE DE TESTES: pytest
-      # ------------------------------------------------------
-      - name: Run tests with pytest
-        id: pytest
-        if: steps.install.outcome == 'success'
-        continue-on-error: true
-        run: |
-          pytest test_app.py -v > pytest-report.txt 2>&1 || true
-          echo "--- pytest report ---"
-          cat pytest-report.txt
+      # Scan de vulnerabilidades da imagem com Trivy (desativado)
+      # - name: Scan image with Trivy
+      #   uses: aquasecurity/trivy-action@v0.36.0
+      #   with:
+      #     image-ref: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+      #     format: table
+      #     exit-code: '1'
+      #     ignore-unfixed: true
+      #     vuln-type: os,library
+      #     severity: MEDIUM,HIGH,CRITICAL
+      #     skip-setup-trivy: false
 
-      # ------------------------------------------------------
-      # EXTRAIR MOTIVO DA FALHA
-      # ------------------------------------------------------
-      - name: Extract failure reason
-        id: reason
-        if: always()
-        run: |
-          REASON=""
+      # Executa os testes unitarios
+      - name: Run pytest
+        run: pytest -q
 
-          # --- Falha no install ---
-          if [ "${{ steps.install.outcome }}" = "failure" ]; then
-            if [ -f install-report.txt ]; then
-              INSTALL_LINE=$(grep -iE "ERROR|Could not find|No matching distribution|conflict" install-report.txt | head -1 || true)
-              if [ -n "$INSTALL_LINE" ]; then
-                REASON="Install: ${INSTALL_LINE}"
-              else
-                REASON="Install: falha ao instalar dependencias."
-              fi
-            fi
-          fi
-
-          # --- CVEs do pip-audit ---
-          if [ "${{ steps.audit.outcome }}" = "failure" ]; then
-            if [ -f audit-report.txt ]; then
-              AUDIT_LINES=$(grep -iE "CVE-|GHSA-|vulnerab" audit-report.txt | head -5 | tr '\n' ' | ' | sed 's/ | $//')
-              if [ -n "$AUDIT_LINES" ]; then
-                if [ -n "$REASON" ]; then
-                  REASON="${REASON} ; Security: ${AUDIT_LINES}"
-                else
-                  REASON="Security: ${AUDIT_LINES}"
-                fi
-              fi
-            fi
-          fi
-
-          # --- Falhas do pytest ---
-          if [ "${{ steps.pytest.outcome }}" = "failure" ]; then
-            if [ -f pytest-report.txt ]; then
-              PYTEST_LINE=$(grep -iE "^FAILED|^ERROR|AssertionError|ModuleNotFoundError" pytest-report.txt | head -1 || true)
-              if [ -n "$PYTEST_LINE" ]; then
-                if [ -n "$REASON" ]; then
-                  REASON="${REASON} ; Tests: ${PYTEST_LINE}"
-                else
-                  REASON="Tests: ${PYTEST_LINE}"
-                fi
-              fi
-            fi
-          fi
-
-          # --- Fallback ---
-          if [ -z "$REASON" ]; then
-            REASON="Falha sem motivo extraido (install=${{ steps.install.outcome }}, audit=${{ steps.audit.outcome }}, pytest=${{ steps.pytest.outcome }})."
-          fi
-
-          echo "Motivo final: $REASON"
-
-          {
-            echo "text<<EOF"
-            echo "$REASON"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      # ------------------------------------------------------
-      # FALHAR O JOB SE QUALQUER GATE FALHOU
-      # ------------------------------------------------------
-      - name: Fail if any gate failed
-        if: steps.install.outcome == 'failure' || steps.audit.outcome == 'failure' || steps.pytest.outcome == 'failure'
-        run: |
-          echo "Um dos gates falhou."
-          echo "Motivo: ${{ steps.reason.outputs.text }}"
-          exit 1
+      # Audita as dependencias em busca de vulnerabilidades conhecidas
+      - name: Audit dependencies
+        run: pip-audit -r requirements.txt
