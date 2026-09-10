@@ -60,13 +60,18 @@ jobs:
     if: always() # Garante que rode mesmo se o job "test" falhar
     runs-on: ubuntu-latest
     steps:
-      - name: Compose message
-        id: msg
-        run: |
-          if [ "${{ needs.test.result }}" = "success" ]; then
-            echo "status=SUCESSO" >> "$GITHUB_OUTPUT"
-            echo "color=3066993" >> "$GITHUB_OUTPUT"
-          else
-            echo "status=FALHA" >> "$GITHUB_OUTPUT"
-            echo "color=15158332" >> "$GITHUB_OUTPUT"
-          fi
+    - name: Compose message
+      id: msg
+      run: |
+        RESULT="${{ needs.test.result }}"
+
+        if [ "$RESULT" = "success" ]; then
+          echo "status=SUCESSO" >> "$GITHUB_OUTPUT"
+          echo "color=3066993" >> "$GITHUB_OUTPUT"
+            elif [ "$RESULT" = "failure" ] || [ "$RESULT" = "cancelled" ]; then
+          echo "status=FALHA" >> "$GITHUB_OUTPUT"
+          echo "color=15158332" >> "$GITHUB_OUTPUT"
+            else
+          echo "status=DESCONHECIDO ($RESULT)" >> "$GITHUB_OUTPUT"
+          echo "color=15158332" >> "$GITHUB_OUTPUT"
+        fi
