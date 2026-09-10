@@ -7,14 +7,6 @@
 
 name: Teste Workflow Reutilizavel
 
-# ============================================================
-# on: DEFINE como este workflow pode ser chamado
-# ============================================================
-# workflow_call: Permite que outro workflow o chame via "uses:"
-# inputs: Parametros que quem chama pode passar
-# outputs: Valores que este workflow devolve para quem chamou
-# ============================================================
-
 on:
   workflow_call:
     inputs:
@@ -27,66 +19,26 @@ on:
         description: 'Motivo da falha (CVE ou teste)'
         value: ${{ jobs.test.outputs.failure-reason }}
 
-# ============================================================
-# permissions: O QUE este workflow pode fazer
-# ============================================================
-# contents: read -> Pode ler o codigo (necessario para o checkout)
-# ============================================================
-
 permissions:
   contents: read
 
-# ============================================================
-# jobs: TAREFAS que serao executadas
-# ============================================================
-
 jobs:
-  # ==========================================================
-  # JOB: test
-  # ==========================================================
-  # Executa testes em multiplas versoes do Python (matrix).
-  # Cada versao roda em paralelo.
-  # ==========================================================
-
   test:
     name: Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
 
-    # ========================================================
-    # outputs: Valores que este job devolve para o workflow
-    # ========================================================
     outputs:
       failure-reason: ${{ steps.reason.outputs.text }}
-
-    # ========================================================
-    # strategy: DEFINE a matrix de versoes
-    # ========================================================
-    # matrix: Cria uma execucao para cada item da lista
-    # fail-fast: false -> Se uma versao falhar, as outras continuam
-    # ========================================================
 
     strategy:
       matrix:
         python-version: ${{ fromJson(inputs.python-version) }}
       fail-fast: false
 
-    # ========================================================
-    # steps: PASSOS executados em sequencia
-    # ========================================================
-
     steps:
-      # ------------------------------------------------------
-      # STEP 1: Baixar o codigo
-      # ------------------------------------------------------
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ------------------------------------------------------
-      # STEP 2: Instalar a versao do Python
-      # ------------------------------------------------------
-      # cache: pip -> Ativa o cache de dependencias (mais rapido)
-      # cache-dependency-path: Arquivo usado para gerar a chave do cache
-      # ------------------------------------------------------
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -96,20 +48,13 @@ jobs:
             requirements.txt
             requirements-dev.txt
 
-      # ------------------------------------------------------
-      # STEP 3: Instalar dependencias
-      # ------------------------------------------------------
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
 
       # ------------------------------------------------------
-      # STEP 4: Verificar vulnerabilidades (pip-audit)
-      # ------------------------------------------------------
-      # Se encontrar um CVE, o comando falha e bloqueia o merge.
-      # Este e o GATE de seguranca do pipeline.
-      # continue-on-error: true -> Nao para o job, permite extrair o motivo
+      # GATE DE SEGURANCA: pip-audit
       # ------------------------------------------------------
       - name: Run pip-audit (security gate)
         id: audit
@@ -120,7 +65,7 @@ jobs:
           cat audit-report.txt
 
       # ------------------------------------------------------
-      # STEP 5: Executar testes unitarios (pytest)
+      # GATE DE TESTES: pytest
       # ------------------------------------------------------
       - name: Run tests with pytest
         id: pytest
@@ -131,11 +76,7 @@ jobs:
           cat pytest-report.txt
 
       # ------------------------------------------------------
-      # STEP 6: Extrair o motivo da falha
-      # ------------------------------------------------------
-      # Monta uma mensagem sucinta com o motivo real:
-      # - Se pip-audit encontrou CVE, mostra o pacote + CVE
-      # - Se pytest falhou, mostra o teste que falhou
+      # EXTRAIR MOTIVO DA FALHA
       # ------------------------------------------------------
       - name: Extract failure reason
         id: reason
@@ -143,40 +84,44 @@ jobs:
         run: |
           REASON=""
 
-          # Verifica se pip-audit falhou
+          # --- CVEs do pip-audit ---
           if [ "${{ steps.audit.outcome }}" = "failure" ]; then
             if [ -f audit-report.txt ]; then
-              AUDIT_LINES=$(grep -iE "CVE-|GHSA-|vulnerab" audit-report.txt | head -3 | tr '\n' ' | ' | sed 's/ | $//')
+              AUDIT_LINES=$(grep -iE "CVE-|GHSA-|vulnerab" audit-report.txt | head -5 | tr '\n' ' | ' | sed 's/ | $//')
               if [ -n "$AUDIT_LINES" ]; then
                 REASON="Security: ${AUDIT_LINES}"
               else
-                REASON="Security: pip-audit encontrou vulnerabilidades."
+                REASON="Security: pip-audit encontrou vulnerabilidades (detalhes no log)."
               fi
             fi
           fi
 
-          # Verifica se pytest falhou
+          # --- Falhas do pytest ---
           if [ "${{ steps.pytest.outcome }}" = "failure" ]; then
-            PYTEST_LINE=$(grep -iE "FAILED|ERROR" pytest-report.txt | head -1 || true)
-            if [ -n "$PYTEST_LINE" ]; then
-              if [ -n "$REASON" ]; then
-                REASON="${REASON} ; Tests: ${PYTEST_LINE}"
+            if [ -f pytest-report.txt ]; then
+              PYTEST_LINE=$(grep -iE "^FAILED|^ERROR|AssertionError|ModuleNotFoundError" pytest-report.txt | head -1 || true)
+              if [ -n "$PYTEST_LINE" ]; then
+                if [ -n "$REASON" ]; then
+                  REASON="${REASON} ; Tests: ${PYTEST_LINE}"
+                else
+                  REASON="Tests: ${PYTEST_LINE}"
+                fi
               else
-                REASON="Tests: ${PYTEST_LINE}"
-              fi
-            else
-              if [ -n "$REASON" ]; then
-                REASON="${REASON} ; Tests falharam."
-              else
-                REASON="Tests falharam."
+                if [ -n "$REASON" ]; then
+                  REASON="${REASON} ; Tests falharam."
+                else
+                  REASON="Tests falharam."
+                fi
               fi
             fi
           fi
 
-          # Fallback
+          # --- Fallback ---
           if [ -z "$REASON" ]; then
-            REASON="Falha sem motivo extraido."
+            REASON="Falha sem motivo extraido (audit=${{ steps.audit.outcome }}, pytest=${{ steps.pytest.outcome }})."
           fi
+
+          echo "Motivo final: $REASON"
 
           {
             echo "text<<EOF"
@@ -185,9 +130,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       # ------------------------------------------------------
-      # STEP 7: Falhar o job se qualquer gate falhou
-      # ------------------------------------------------------
-      # Este step e o que faz o job ficar VERMELHO e bloquear o merge.
+      # FALHAR O JOB SE QUALQUER GATE FALHOU
       # ------------------------------------------------------
       - name: Fail if any gate failed
         if: steps.audit.outcome == 'failure' || steps.pytest.outcome == 'failure'
