@@ -1,9 +1,9 @@
 #.github/CODEOWNERS
 # Todo o repositorio
-* @dhuberto
+* @dhuberto @emcsmalone @tiagocamilos @tongenx @helierison @HardSource
 
 #Workflows do CI/CD - dono do repo obrigatorio
 /.github/workflows/     @dhuberto
 
 # Manifestos de deploy - todos revisam quando mudar
-# /k8s/                   @dhuberto
+# /k8s/                  @dhuberto @emcsmalone @tiagocamilos @tongenx @helierison @HardSource
