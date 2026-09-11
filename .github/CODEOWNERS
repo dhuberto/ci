@@ -1,6 +1,6 @@
 #.github/CODEOWNERS
 # Todo o repositorio
-* @dhuberto @emcsmalone @tiagocamilos @tongenx @helierison @HardSource
+* @dhuberto #@emcsmalone @tiagocamilos @tongenx @helierison @HardSource
 
 #Workflows do CI/CD - dono do repo obrigatorio
 /.github/workflows/     @dhuberto
