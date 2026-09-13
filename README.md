@@ -22,8 +22,10 @@ Settings > Branches > Add branch protection rule para main
 Marque: Require a pull request before merging, 
 
 # 4) Editar o .github/CODEOWNERS
-# .github/CODEOWNERS
+```
+.github/CODEOWNERS
 *                        @emcsmalone @tiagocamilos
+```
 
 Resumo das configurações:
 ```
