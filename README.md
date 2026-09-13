@@ -27,7 +27,7 @@ Marque: Require a pull request before merging,
 *                        @emcsmalone @tiagocamilos
 ```
 
-Resumo das configurações:
+## Resumo das configurações:
 ```
 Settings > Collaborators	Todos os 5 membros com permissão Write
 Settings > Collaborators	@HardSource com permissão Read
