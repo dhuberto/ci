@@ -21,7 +21,7 @@ jobs:
 
   # Job de notificacao: reporta o resultado da pipeline
   notify:
-    name: Notify pipeline result
+    name: Notificação da Pipeline.
     needs: [test]
     if: always() # Roda mesmo se o job "test" falhar
     runs-on: ubuntu-latest
