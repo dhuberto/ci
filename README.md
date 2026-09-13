@@ -1,5 +1,5 @@
 [![.github/workflows/ci.yml](https://github.com/dhuberto/ci/actions/workflows/ci.yml/badge.svg)](https://github.com/dhuberto/ci/actions/workflows/ci.yml)
-
+teste
 ```
 ci/                                         # Raiz do repositório
 │
