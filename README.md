@@ -32,7 +32,8 @@ Marque: Require a pull request before merging,
 Settings > Collaborators	Todos os 5 membros com permissão Write
 Settings > Collaborators	@HardSource com permissão Read
 .github/CODEOWNERS		* @emcsmalone (ou * @emcsmalone @tiagocamilos como fallback)
-Settings > Branches		Regra para main com: Require PR + 1 approval + Require review from Code Owners + required checks + up to date
+Settings > Branches		Regra para main com: Require PR + 1 approval
++ Require review from Code Owners + required checks + up to date
 ```
 
 # Estrutura:
