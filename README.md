@@ -3,29 +3,35 @@
 Configurações feitas no github:
 
 1) Tornar o repositório privado
+```
 Settings > General > Danger Zone > Change visibility > Change to private
+```
 
-2) Adicionar @HardSource como collaborator (Read)
+3) Adicionar @HardSource como collaborator (Read)
+```
 Settings > Collaborators and teams > Add people 
+```
 
 Atribuir permissão Read
 Enviar o convite (o professor precisa aceitar)
 
 3) Configurar a branch protection da main
+```   
 Settings > Branches > Add branch protection rule para main
+```
 Marque: Require a pull request before merging, 
 
-4) Editar o .github/CODEOWNERS
+5) Editar o .github/CODEOWNERS
 # .github/CODEOWNERS
 *                        @emcsmalone @tiagocamilos
 
-Resumo do que configurar
-Local	Configuração
+Resumo das configurações:
+```
 Settings > Collaborators	Todos os 5 membros com permissão Write
 Settings > Collaborators	@HardSource com permissão Read
 .github/CODEOWNERS		* @emcsmalone (ou * @emcsmalone @tiagocamilos como fallback)
 Settings > Branches		Regra para main com: Require PR + 1 approval + Require review from Code Owners + required checks + up to date
-
+```
 
 
 ```
