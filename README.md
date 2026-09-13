@@ -33,7 +33,7 @@ Settings > Collaborators	@HardSource com permissão Read
 Settings > Branches		Regra para main com: Require PR + 1 approval + Require review from Code Owners + required checks + up to date
 ```
 
-
+# Estrutura:
 ```
 ci/                                         # Raiz do repositório
 │
