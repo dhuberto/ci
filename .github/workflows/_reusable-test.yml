@@ -23,13 +23,13 @@ jobs:
         python-version: ${{ fromJSON(inputs.python-versions) }}
     # Steps: sequencia de execucao do job
     steps:
-      # Baixa o codigo do repositorio
+      # Baixa o codigo do repositorio (pinado por SHA por seguranca)
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
-      # Instala a versao do Python com cache de dependencias
+      # Instala a versao do Python com cache de dependencias (pinado por SHA)
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5.3.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
