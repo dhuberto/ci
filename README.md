@@ -1,4 +1,4 @@
-[![.github/workflows/ci_cd.yml](https://github.com/dhuberto/ci_cd/actions/workflows/ci_cd.yml/badge.svg)](https://github.com/dhuberto/ci_cd/actions/workflows/ci_cd.yml)
+[![.github/workflows/ci.yml](https://github.com/dhuberto/ci_cd/actions/workflows/ci.yml/badge.svg)](https://github.com/dhuberto/ci_cd/actions/workflows/ci.yml)
 
 Configurações feitas no github:
 
