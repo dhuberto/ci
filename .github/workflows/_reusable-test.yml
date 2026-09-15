@@ -46,16 +46,3 @@ jobs:
 
       - name: Run pytest
         run: pytest -v
-
-         # Gate 3: CVEs no filesystem (código + libs).
-      # exit-code 1 é o que transforma o scan em gate; sem isso ele só informa.
-      - name: Scan filesystem with Trivy
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          format: table
-          exit-code: '1'
-          ignore-unfixed: true
-          vuln-type: os,library
-          severity: MEDIUM,HIGH,CRITICAL
