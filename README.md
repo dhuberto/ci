@@ -1,4 +1,5 @@
 [![CI](https://github.com/dhuberto/ci_cd/actions/workflows/ci.yml/badge.svg)](https://github.com/dhuberto/ci_cd/actions/workflows/ci.yml)
+
 Configurações feitas no github:
 
 ## 1) Tornar o repositório privado
