@@ -1,10 +1,6 @@
-# ============================================================
-# DEPENDÊNCIAS DE DESENVOLVIMENTO
-# ============================================================
-# Pacotes usados apenas para testes e desenvolvimento.
-# Não são necessários em produção.
-# ============================================================
-
+# ABOUTME: Development and CI dependencies for testing, linting and auditing.
+# ABOUTME: Installed on top of requirements.txt in the CI pipeline.
+-r requirements.txt
 pytest==9.0.3
-#pytest==7.4.3
+ruff==0.6.9
 pip-audit==2.7.3
