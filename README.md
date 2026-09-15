@@ -1,4 +1,4 @@
-[![.github/workflows/ci.yml](https://github.com/dhuberto/ci/actions/workflows/ci.yml/badge.svg)](https://github.com/dhuberto/ci/actions/workflows/ci.yml)
+[![.github/workflows/ci_cd.yml](https://github.com/dhuberto/ci_cd/actions/workflows/ci_cd.yml/badge.svg)](https://github.com/dhuberto/ci_cd/actions/workflows/ci_cd.yml)
 
 Configurações feitas no github:
 
@@ -38,7 +38,7 @@ Settings > Branches		Regra para main com: Require PR + 1 approval
 
 # Estrutura:
 ```
-ci/                                         # Raiz do repositório
+ci_cd/                                      # Raiz do repositório
 │
 ├── .github/                                # Pasta especial do GitHub
 │   ├── CODEOWNERS                          # Define quem revisa os PRs
@@ -80,8 +80,8 @@ ci/                                         # Raiz do repositório
 
 # Clonar para a maquina local o repositorio
 ```bash
-git clone https://github.com/dhuberto/ci.git
-cd ci
+git clone https://github.com/dhuberto/ci_cd.git
+cd ci_cd
 ```
 
 # Criar o ambiente virtual
