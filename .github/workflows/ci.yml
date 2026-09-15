@@ -1,5 +1,6 @@
 name: CI
 
+# Gatilhos: push na main, PR para main e execucao manual
 on:
   push:
     branches: [main]
@@ -7,18 +8,22 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Permissoes minimas: leitura do codigo (jobs especificos pedem mais)
 permissions:
   contents: read
 
+# Concorrencia: cancela runs antigos do mesmo branch/workflow
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Variaveis globais reutilizadas pelos jobs
 env:
   IMAGE_NAME: app-k8s-todolist
   PYTHON_DEFAULT: '3.12'
 
 jobs:
+  # Lint: analise estatica com ruff, falha rapido se o codigo estiver sujo
   lint:
     name: Lint (ruff)
     runs-on: ubuntu-24.04
@@ -40,12 +45,14 @@ jobs:
       - name: Run ruff
         run: ruff check .
 
+  # Testes: delega para o reusable, matrix 3.11/3.12/3.13
   test:
     name: Test
     uses: ./.github/workflows/_reusable-test.yml
     with:
       python-versions: '["3.11", "3.12", "3.13"]'
 
+  # Seguranca (deps): audita vulnerabilidades com pip-audit
   security:
     name: Dependency audit (pip-audit)
     runs-on: ubuntu-24.04
@@ -67,6 +74,7 @@ jobs:
       - name: Run pip-audit
         run: pip-audit
 
+  # Seguranca (filesystem): Trivy escaneia o codigo, gera SARIF
   trivy:
     name: Vulnerability scan (Trivy, filesystem)
     runs-on: ubuntu-24.04
@@ -74,7 +82,6 @@ jobs:
     permissions:
       contents: read
       security-events: write
-
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -103,6 +110,7 @@ jobs:
           name: trivy-fs-results
           path: trivy-results.sarif
 
+  # Build: constroi a imagem Docker (sem push) e salva como artefato
   build:
     name: Build image
     needs: [lint, test, security]
@@ -113,11 +121,11 @@ jobs:
       repo: ${{ steps.image.outputs.repo }}
     permissions:
       contents: read
-
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+      # Resolve o nome da imagem: ghcr.io/<owner>/<IMAGE_NAME>
       - name: Resolve image reference
         id: image
         env:
@@ -146,6 +154,7 @@ jobs:
           path: image.tar
           retention-days: 1
 
+  # Seguranca (imagem): Trivy escaneia a imagem construida
   trivy_image:
     name: Vulnerability scan (Trivy, image)
     needs: build
@@ -155,7 +164,6 @@ jobs:
     permissions:
       contents: read
       security-events: write
-
     steps:
       - name: Download image artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
@@ -189,6 +197,7 @@ jobs:
           name: trivy-image-results
           path: trivy-results.sarif
 
+  # Publish: envia a imagem para o GHCR apos todos os gates passarem
   publish:
     name: Publish image to GHCR
     needs: [lint, test, security, trivy, build, trivy_image]
@@ -199,7 +208,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-
     steps:
       - name: Download image artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
@@ -212,6 +220,7 @@ jobs:
       - name: Tag image as latest
         run: docker tag "${{ needs.build.outputs.repo }}:${{ github.sha }}" "${{ needs.build.outputs.repo }}:latest"
 
+      # Login no GHCR com o GITHUB_TOKEN automatico
       - name: Login to GitHub Container Registry
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
@@ -224,6 +233,7 @@ jobs:
           docker push "${{ needs.build.outputs.repo }}:${{ github.sha }}"
           docker push "${{ needs.build.outputs.repo }}:latest"
 
+  # Notify: envia o resultado do pipeline para o webhook (Discord/Slack)
   notify:
     name: Notify pipeline result
     needs: [lint, test, security, trivy, build, trivy_image, publish]
@@ -232,8 +242,8 @@ jobs:
     timeout-minutes: 5
     env:
       WEBHOOK: ${{ secrets.NOTIFY_WEBHOOK_URL }}
-
     steps:
+      # Monta a mensagem conforme o resultado dos jobs
       - name: Compose message
         id: msg
         run: |
@@ -251,6 +261,7 @@ jobs:
             echo "color=15158332"   >> "$GITHUB_OUTPUT"
           fi
 
+      # Envia o payload JSON para o webhook configurado
       - name: Send webhook
         if: env.WEBHOOK != ''
         env:
