@@ -1,5 +1,6 @@
 name: Reusable test
 
+# Gatilho: chamado por outro workflow via "uses:" com input de versoes do Python
 on:
   workflow_call:
     inputs:
@@ -9,10 +10,13 @@ on:
         type: string
         default: '["3.11", "3.12", "3.13"]'
 
+# Permissoes: apenas leitura do codigo
 permissions:
   contents: read
 
+# Jobs: define os jobs do workflow reutilizavel
 jobs:
+  # Job de testes: roda em matrix de versoes do Python
   test:
     name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-24.04
@@ -22,15 +26,19 @@ jobs:
       matrix:
         python-version: ${{ fromJSON(inputs.python-versions) }}
 
+    # Steps: sequencia de execucao do job
     steps:
+      # Baixa o codigo do repositorio (pinado por SHA)
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+      # Instala a versao do Python da matrix (pinado por SHA)
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ matrix.python-version }}
 
+      # Cache do pip: chave por SO + versao do Python + hash dos requirements
       - name: Restore pip cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
@@ -39,10 +47,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-${{ matrix.python-version }}-
 
+      # Instala as dependencias de producao e desenvolvimento
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
 
+      # Executa os testes unitarios (gate de qualidade)
       - name: Run pytest
         run: pytest -v
